@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,8 +19,10 @@ import {
   Phone,
   Eye,
   Zap,
-  LogOut,
+  Bed,
 } from "lucide-react"
+import { Avatar } from "@/components/ui/avatar"
+import { LogOut } from "lucide-react"
 
 const languages = [
   { code: "en", name: "English" },
@@ -40,8 +42,6 @@ const translations = {
   en: {
     title: "Smart Tourist Safety Monitoring System",
     subtitle: "AI-powered safety monitoring and emergency response for tourists",
-    registerTourist: "Register as Tourist",
-    loginAuthority: "Login as Police/Authority",
     exploreFeatures: "Explore Features",
     features: "Key Features",
     digitalId: "Digital Tourist ID",
@@ -60,12 +60,15 @@ const translations = {
     blockchainVerified: "Blockchain Verified",
     dataPrivacy: "Data Privacy Compliant",
     multiLanguage: "Multi-Language Support",
+    selectRole: "Login / Signup as",
+    contactSupport: "Contact Support",
+    accessDashboard: "Access Dashboard",
+    getStarted: "Get Started Now",
+    emergencySOS: "Emergency SOS",
   },
   hi: {
     title: "स्मार्ट पर्यटक सुरक्षा निगरानी प्रणाली",
     subtitle: "पर्यटकों के लिए AI-संचालित सुरक्षा निगरानी और आपातकालीन प्रतिक्रिया",
-    registerTourist: "पर्यटक के रूप में पंजीकरण करें",
-    loginAuthority: "पुलिस/प्राधिकरण लॉगिन",
     exploreFeatures: "सुविधाएं देखें",
     features: "मुख्य विशेषताएं",
     digitalId: "डिजिटल पर्यटक पहचान",
@@ -84,6 +87,11 @@ const translations = {
     blockchainVerified: "ब्लॉकचेन सत्यापित",
     dataPrivacy: "डेटा गोपनीयता अनुपालित",
     multiLanguage: "बहु-भाषा समर्थन",
+    selectRole: "लॉगिन / साइनअप करें",
+    contactSupport: "संपर्क सहायता",
+    accessDashboard: "डैशबोर्ड खोलें",
+    getStarted: "अभी शुरू करें",
+    emergencySOS: "आपातकालीन SOS",
   },
 }
 
@@ -91,10 +99,23 @@ export function LandingPage() {
   const [currentLang, setCurrentLang] = useState("en")
   const { user, logout } = useAuth()
   const t = translations[currentLang as keyof typeof translations]
+  const [profileOpen, setProfileOpen] = useState(false)
+  const profileRef = useRef<HTMLDivElement>(null)
 
-  const handleLogout = () => {
-    logout()
-  }
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false)
+      }
+    }
+    if (profileOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [profileOpen])
 
   const getDashboardRoute = () => {
     if (!user) return "/auth"
@@ -113,6 +134,9 @@ export function LandingPage() {
         return "/auth"
     }
   }
+
+  // Add your trip creation route here
+  const getTripCreationRoute = () => "/tripCreate"
 
   const features = [
     {
@@ -148,30 +172,99 @@ export function LandingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Shield className="h-8 w-8 text-primary" />
             <span className="text-xl font-bold text-primary">SafeTour</span>
           </div>
-
-          <div className="flex items-center gap-4">
-            {user && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Welcome, {user.firstName} ({user.role})
-                </span>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-1" />
-                  Logout
-                </Button>
-              </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {user ? (
+              <>
+                <Link href={getTripCreationRoute()}>
+                  <Button size="sm" variant="outline" className="whitespace-nowrap">
+                    <MapPin className="mr-2 h-5 w-5" />
+                    Create Trip
+                  </Button>
+                </Link>
+                <Link href={getDashboardRoute()}>
+                  <Button size="sm" className="bg-secondary hover:bg-secondary/90 whitespace-nowrap">
+                    <Eye className="mr-2 h-5 w-5" />
+                    Dashboard
+                  </Button>
+                </Link>
+                {/* Profile Dropdown */}
+                <div className="relative" ref={profileRef}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="flex items-center gap-2 px-2"
+                    onClick={() => setProfileOpen((v) => !v)}
+                    aria-haspopup="true"
+                    aria-expanded={profileOpen}
+                  >
+                    <Avatar className="h-7 w-7">
+                      <span className="sr-only">Profile</span>
+                      {user.email?.[0]?.toUpperCase() || <Users className="h-5 w-5" />}
+                    </Avatar>
+                    <span className="hidden sm:inline font-medium">{user.email?.split("@")[0]}</span>
+                  </Button>
+                  {profileOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg z-50 animate-fade-in">
+                      <div className="p-4 border-b">
+                        <div className="font-medium break-all">{user.email}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{user.role}</div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        className="w-full text-left px-4 py-2 text-red-600 justify-start"
+                        onClick={logout}
+                      >
+                        <LogOut className="inline-block mr-2 h-4 w-4" />
+                        Logout
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <Link href="/auth?role=tourist">
+                  <Button size="sm" className="bg-secondary hover:bg-secondary/90 whitespace-nowrap">
+                    <Users className="mr-2 h-5 w-5" />
+                    Tourist Login / Signup
+                  </Button>
+                </Link>
+                <Link href="/auth?role=police">
+                  <Button size="sm" variant="outline" className="whitespace-nowrap">
+                    <Shield className="mr-2 h-5 w-5" />
+                    Police Login
+                  </Button>
+                </Link>
+                <Link href="/auth?role=hotel">
+                  <Button size="sm" variant="outline" className="whitespace-nowrap">
+                    <Bed className="mr-2 h-5 w-5" />
+                    Hotel Login
+                  </Button>
+                </Link>
+                <Link href="/auth?role=hospital">
+                  <Button size="sm" variant="outline" className="whitespace-nowrap">
+                    <Phone className="mr-2 h-5 w-5" />
+                    Hospital Login
+                  </Button>
+                </Link>
+                <Link href="/auth?role=admin">
+                  <Button size="sm" variant="outline" className="whitespace-nowrap">
+                    <Lock className="mr-2 h-5 w-5" />
+                    Admin Login
+                  </Button>
+                </Link>
+              </>
             )}
-
             {/* Language Selector */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-2">
               <Globe className="h-4 w-4 text-muted-foreground" />
               <select
                 value={currentLang}
@@ -190,7 +283,7 @@ export function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 overflow-hidden">
+      <section className="relative py-20 px-4 overflow-hidden flex flex-col items-center justify-center">
         <div className="absolute inset-0 z-0">
           <video autoPlay muted loop playsInline className="w-full h-full object-cover">
             <source
@@ -198,48 +291,13 @@ export function LandingPage() {
               type="video/mp4"
             />
           </video>
-          {/* Dark overlay for better text readability */}
-          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 bg-black/60" />
         </div>
-
-        <div className="container mx-auto text-center max-w-4xl relative z-10">
-          <h1 className="text-4xl md:text-6xl font-bold text-balance mb-6 text-white">{t.title}</h1>
-          <p className="text-xl text-white/90 text-pretty mb-8 max-w-2xl mx-auto">{t.subtitle}</p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            {user ? (
-              <Link href={getDashboardRoute()}>
-                <Button size="lg" className="bg-secondary hover:bg-secondary/90">
-                  <Eye className="mr-2 h-5 w-5" />
-                  Go to Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link href="/auth">
-                  <Button size="lg" className="bg-secondary hover:bg-secondary/90">
-                    <Users className="mr-2 h-5 w-5" />
-                    {t.registerTourist}
-                  </Button>
-                </Link>
-                <Link href="/auth">
-                  <Button size="lg" variant="outline">
-                    <Eye className="mr-2 h-5 w-5" />
-                    {t.loginAuthority}
-                  </Button>
-                </Link>
-              </>
-            )}
-            <Link href="/sos">
-              <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white">
-                <AlertTriangle className="mr-2 h-5 w-5" />
-                Emergency SOS
-              </Button>
-            </Link>
-          </div>
-
+        <div className="container mx-auto text-center max-w-4xl relative z-10 flex flex-col items-center">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-white drop-shadow-lg">{t.title}</h1>
+          <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto drop-shadow">{t.subtitle}</p>
           {/* Trust Badges */}
-          <div className="flex flex-wrap justify-center gap-4 mb-16">
+          <div className="flex flex-wrap justify-center gap-4 mt-10">
             <Badge variant="secondary" className="px-4 py-2 bg-black/80 text-white border-white/20">
               <Lock className="mr-2 h-4 w-4" />
               {t.blockchainVerified}
@@ -265,10 +323,9 @@ export function LandingPage() {
               Comprehensive safety features powered by AI, blockchain, and IoT technology
             </p>
           </div>
-
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/90">
                 <CardHeader>
                   <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
                     <feature.icon className="h-6 w-6 text-secondary" />
@@ -297,20 +354,20 @@ export function LandingPage() {
                 <Link href={getDashboardRoute()}>
                   <Button size="lg" className="bg-secondary hover:bg-secondary/90">
                     <Zap className="mr-2 h-5 w-5" />
-                    Access Dashboard
+                    {t.accessDashboard}
                   </Button>
                 </Link>
               ) : (
                 <Link href="/auth">
                   <Button size="lg" className="bg-secondary hover:bg-secondary/90">
                     <Zap className="mr-2 h-5 w-5" />
-                    Get Started Now
+                    {t.getStarted}
                   </Button>
                 </Link>
               )}
               <Button size="lg" variant="outline">
                 <Phone className="mr-2 h-5 w-5" />
-                Contact Support
+                {t.contactSupport}
               </Button>
             </div>
           </div>
@@ -318,7 +375,7 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 px-4">
+      <footer className="border-t py-12 px-4 mt-auto">
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Shield className="h-6 w-6 text-primary" />

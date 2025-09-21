@@ -1,178 +1,33 @@
-import { type NextRequest, NextResponse } from "next/server"
-import crypto from "crypto"
+import { NextRequest, NextResponse } from "next/server"
+import { ethers } from "ethers"
 
-interface TouristData {
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  nationality: string
-  documentType: string
-  documentNumber: string
-  arrivalDate: string
-  departureDate: string
-  visitingStates: string[]
-  emergencyContacts: Array<{
-    name: string
-    phone: string
-    relation: string
-  }>
-}
+// Replace with your deployed contract address and ABI
+const CONTRACT_ADDRESS = process.env.CID_REGISTRY_ADDRESS as string
+const CONTRACT_ABI = [
+  "function storeCid(string hash, string cid) public",
+  "function getCid(string hash) public view returns (string)"
+]
 
-interface BlockchainTransaction {
-  id: string
-  timestamp: string
-  touristData: TouristData
-  hash: string
-  previousHash: string
-  nonce: number
-  merkleRoot: string
-}
+// Use a private key with testnet funds for writing to the contract
+const PRIVATE_KEY = process.env.BLOCKCHAIN_PRIVATE_KEY as string
+const RPC_URL = process.env.BLOCKCHAIN_RPC_URL as string // e.g. Infura/Alchemy endpoint
 
-interface DigitalID {
-  touristId: string
-  blockchainHash: string
-  qrCode: string
-  issuedAt: string
-  expiresAt: string
-  verificationUrl: string
-  digitalSignature: string
-}
-
-// Simulated blockchain functions
-function calculateHash(data: string): string {
-  return crypto.createHash("sha256").update(data).digest("hex")
-}
-
-function generateMerkleRoot(transactions: string[]): string {
-  if (transactions.length === 0) return ""
-  if (transactions.length === 1) return calculateHash(transactions[0])
-
-  const newLevel: string[] = []
-  for (let i = 0; i < transactions.length; i += 2) {
-    const left = transactions[i]
-    const right = i + 1 < transactions.length ? transactions[i + 1] : left
-    newLevel.push(calculateHash(left + right))
-  }
-
-  return generateMerkleRoot(newLevel)
-}
-
-function mineBlock(data: string, difficulty = 4): { hash: string; nonce: number } {
-  let nonce = 0
-  const target = "0".repeat(difficulty)
-
-  while (true) {
-    const hash = calculateHash(data + nonce)
-    if (hash.substring(0, difficulty) === target) {
-      return { hash, nonce }
-    }
-    nonce++
-  }
-}
-
-function createBlockchainTransaction(touristData: TouristData): BlockchainTransaction {
-  const id = `BLK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  const timestamp = new Date().toISOString()
-
-  // Simulate getting previous block hash (in real implementation, this would come from the blockchain)
-  const previousHash = calculateHash(`previous-block-${Date.now() - 1000}`)
-
-  // Create transaction data
-  const transactionData = JSON.stringify({
-    id,
-    timestamp,
-    touristData: {
-      ...touristData,
-      // Hash sensitive data for privacy
-      documentNumber: calculateHash(touristData.documentNumber),
-      phone: calculateHash(touristData.phone),
-    },
-  })
-
-  // Generate Merkle root
-  const merkleRoot = generateMerkleRoot([transactionData])
-
-  // Mine the block
-  const blockData = `${id}${timestamp}${transactionData}${previousHash}${merkleRoot}`
-  const { hash, nonce } = mineBlock(blockData)
-
-  return {
-    id,
-    timestamp,
-    touristData,
-    hash,
-    previousHash,
-    nonce,
-    merkleRoot,
-  }
-}
-
-function generateDigitalID(transaction: BlockchainTransaction): DigitalID {
-  const touristId = `TST-${new Date().getFullYear()}-${transaction.hash.substring(0, 8).toUpperCase()}`
-
-  // Generate QR code data
-  const qrData = {
-    touristId,
-    hash: transaction.hash,
-    issuedAt: transaction.timestamp,
-    verificationUrl: `https://safetour.gov.in/verify/${touristId}`,
-  }
-
-  // Create digital signature
-  const digitalSignature = calculateHash(JSON.stringify(qrData) + process.env.BLOCKCHAIN_PRIVATE_KEY || "demo-key")
-
-  return {
-    touristId,
-    blockchainHash: transaction.hash,
-    qrCode: Buffer.from(JSON.stringify(qrData)).toString("base64"),
-    issuedAt: transaction.timestamp,
-    expiresAt: transaction.touristData.departureDate,
-    verificationUrl: qrData.verificationUrl,
-    digitalSignature,
-  }
-}
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const touristData: TouristData = await request.json()
+    const { email, cid } = await req.json()
+    const hash = email // Use email as hash
 
-    // Validate required fields
-    if (!touristData.firstName || !touristData.lastName || !touristData.email) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
-    }
+    // Connect to blockchain
+    const provider = new ethers.JsonRpcProvider(RPC_URL)
+    const wallet = new ethers.Wallet(PRIVATE_KEY, provider)
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet)
 
-    // Simulate blockchain processing time
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    // Store the CID on-chain
+    const tx = await contract.storeCid(hash, cid)
+    await tx.wait()
 
-    // Create blockchain transaction
-    const transaction = createBlockchainTransaction(touristData)
-
-    // Generate digital ID
-    const digitalId = generateDigitalID(transaction)
-
-    // In a real implementation, this would be stored in a distributed ledger
-    console.log("Blockchain Transaction Created:", {
-      transactionId: transaction.id,
-      hash: transaction.hash,
-      touristId: digitalId.touristId,
-    })
-
-    return NextResponse.json({
-      success: true,
-      transaction: {
-        id: transaction.id,
-        hash: transaction.hash,
-        timestamp: transaction.timestamp,
-        merkleRoot: transaction.merkleRoot,
-      },
-      digitalId,
-      blockchainNetwork: "SafeTour-Chain-Testnet",
-      gasUsed: "0.0023 STT", // SafeTour Tokens
-      confirmations: 6,
-    })
-  } catch (error) {
-    console.error("Blockchain ID Creation Error:", error)
-    return NextResponse.json({ success: false, error: "Failed to create blockchain digital ID" }, { status: 500 })
+    return NextResponse.json({ hash })
+  } catch (err: any) {
+    return NextResponse.json({ error: "Blockchain storage failed", details: err.message }, { status: 500 })
   }
 }
