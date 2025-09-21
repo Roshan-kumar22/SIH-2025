@@ -495,7 +495,7 @@ if (user?.id) {
               </div>
 
               {/* Emergency Panic Button */}
-              <Card className="border-red-200 bg-red-50/50">
+              {/* <Card className="border-red-200 bg-red-50/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-red-700">
                     <AlertTriangle className="h-5 w-5" />
@@ -533,7 +533,7 @@ if (user?.id) {
                     )}
                   </Button>
                 </CardContent>
-              </Card>
+              </Card> */}
 
               {/* Recent Alerts */}
               <Card>
@@ -703,32 +703,26 @@ if (user?.id) {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Emergency Contacts
+                    Live Location
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {emergencyContacts.length > 0 ? (
-                      emergencyContacts.map((contact: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
-                          <div>
-                            <SpoilerField label="Name" value={contact.name || ""} field={`contact-name-${index}`} />
-                            <SpoilerField label="Relation" value={contact.relation || ""} field={`contact-relation-${index}`} />
-                          </div>
-                          <Button variant="ghost" size="sm">
-                            <Phone className="h-4 w-4" />
-                          </Button>
+                    
+                        <div  className="flex items-center justify-between p-3 rounded-lg border">
+                         
+                          <a href={"https://d024293fd5a0.ngrok-free.app"} className="text-blue-600 hover:underline" target="_blank">
+                          Click here for live location
+                          </a>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-muted-foreground text-sm">No emergency contacts available.</div>
-                    )}
+                      
+                   
                   </div>
                 </CardContent>
               </Card>
 
               {/* Health Monitoring */}
-              <Card>
+              {/* <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Heart className="h-5 w-5" />
@@ -757,7 +751,7 @@ if (user?.id) {
                     </p>
                   </div>
                 </CardContent>
-              </Card>
+              </Card> */}
 
               {/* Quick Actions */}
               <Card>
